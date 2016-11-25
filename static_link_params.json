@@ -1,0 +1,60 @@
+{
+    "hosts": ["h1", "h2", "h3"],
+    "switches": ["s1", "s2", "s3"],
+    "links": [
+        {
+            "src": "s1",
+            "dst": "s2",
+            "params": {
+                "bw": 10,
+                "delay": "50ms",
+                "loss": 1
+            }
+        },
+        {
+            "src": "s1",
+            "dst": "s3",
+            "params": {
+                "bw": 10,
+                "delay": "50ms",
+                "loss": 1
+            }
+        },
+        {
+            "src": "s1",
+            "dst": "h1",
+            "params": {
+                "bw": 10,
+                "delay": "50ms",
+                "loss": 1
+            }
+        },
+        {
+            "src": "s2",
+            "dst": "s3",
+            "params": {
+                "bw": 10,
+                "delay": "50ms",
+                "loss": 1
+            }
+        },
+        {
+            "src": "s2",
+            "dst": "h2",
+            "params": {
+                "bw": 10,
+                "delay": "50ms",
+                "loss": 1
+            }
+        },
+        {
+            "src": "s3",
+            "dst": "h3",
+            "params": {
+                "bw": 10,
+                "delay": "50ms",
+                "loss": 1
+            }
+        }
+    ]
+}
