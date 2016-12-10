@@ -41,7 +41,7 @@ class Topology(EventMixin):
             if not netgraph.get_host(src):
                 netgraph.add_host(src, "s%d" % event.dpid, event.port)
                 for src_switch, connection in netgraph.get_all_switches():
-                    path = netgraph.find_path(src_switch, src)
+                    path = netgraph.find_path(src_switch, src, bw=0, delay=1, loss=1)
                     for switch, port in path:
                         switch.send( of.ofp_flow_mod( action=of.ofp_action_output( port=port ),
                                                                  match=of.ofp_match( dl_type=0x0806,
