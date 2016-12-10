@@ -1,13 +1,17 @@
 switches = {}
 hosts = {}
 network = {}
+dscps = {}
+
+with open('ext/dscp.json') as dscp_config:
+    dscps = json.load(dscp_config)
 
 def add_link(src, src_port, dst, dst_port, **params):
     network[src][dst] = {"src": src_port, "dst": dst_port, "params": params}
     network[dst][src] = {"src": dst_port, "dst": src_port, "params": params}
     print network
 
-def find_path(src, dst, **params):
+def find_path(src, dst, dscp):
     pass
 
 def add_switch(dpid, connection):
