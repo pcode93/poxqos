@@ -1,6 +1,7 @@
 import json
 import netgraph
-from pox.core import core  
+from pox.core import core
+from pox.lib.revent import *
 import pox.openflow.libopenflow_01 as of  
 from pox.lib.packet.ethernet import ethernet
 from pox.lib.packet.ipv4 import ipv4
@@ -12,20 +13,20 @@ class Topology(EventMixin):
             core.openflow.addListeners(self)
             core.openflow_discovery.addListeners(self)
 
-            with open('../static_link_params.json') as config:
+            with open('ext/static_link_params.json') as config:
                 self.links = json.load(config)["links"]
 
         core.call_when_ready(startup, ('openflow','openflow_discovery'))
 
     def _handle_LinkEvent(self, event):
-        src = 's%d' % event.link.dpid1
-        dst = 's%d' % event.link.dpid2
+        src = "s%d" % event.link.dpid1
+        dst = "s%d" % event.link.dpid2
 
         link = [x for x in self.links if (x["src"], x["dst"]) == (src, dst)]
-        len(link) > 0 and netgraph.add_link(src, dst, **link[0]["params"])
+        len(link) > 0 and netgraph.add_link(src, event.link.port1, dst, event.link.port2, **link[0]["params"])
 
     def _handle_ConnectionUp(self, event):
-        netgraph.add_switch('s%d' % event.dpid)
+        netgraph.add_switch("s%d" % event.dpid, event.connection)
         event.connection.send( of.ofp_flow_mod( action=of.ofp_action_output( port=of.OFPP_CONTROLLER ),
                                                 match=of.ofp_match( dl_type=0x800)))
 
@@ -38,11 +39,11 @@ class Topology(EventMixin):
             dst = str(arp_packet.protodst)
 
             if not netgraph.get_host(src):
-                netgraph.add_host(src, event.dpid, event.port)
-                for src_switch in netgraph.get_all_switches():
+                netgraph.add_host(src, "s%d" % event.dpid, event.port)
+                for src_switch, connection in netgraph.get_all_switches():
                     path = netgraph.find_path(src_switch, src)
                     for switch, port in path:
-                        switch.connection.send( of.ofp_flow_mod( action=of.ofp_action_output( port=port ),
+                        switch.send( of.ofp_flow_mod( action=of.ofp_action_output( port=port ),
                                                                  match=of.ofp_match( dl_type=0x0806,
                                                                                      nw_dst=src)))
             if not netgraph.get_host(dst):
