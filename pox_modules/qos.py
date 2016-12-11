@@ -1,5 +1,4 @@
-import json
-import netgraph
+import ext.netgraph.netgraph as netgraph
 from pox.core import core
 from pox.lib.revent import *
 import pox.openflow.libopenflow_01 as of

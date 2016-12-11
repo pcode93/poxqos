@@ -1,9 +1,11 @@
+import json
+
 switches = {}
 hosts = {}
 network = {}
 dscps = {}
 
-with open('ext/dscp.json') as dscp_config:
+with open('ext/netgraph/dscp.json') as dscp_config:
     dscps = json.load(dscp_config)
 
 def add_link(src, src_port, dst, dst_port, **params):

@@ -17,7 +17,7 @@ class QosTopo(Topo):
             self.addLink(link["src"], link["dst"], **link["params"])
 
 def start():
-    with open('../static_link_params.json') as config:
+    with open('static_link_params.json') as config:
         mn = Mininet(topo=QosTopo(json.load(config)), link=TCLink, controller=lambda name: RemoteController( name, ip='127.0.0.1' , port=8000))
         mn.start()
         CLI(mn)
