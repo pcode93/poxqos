@@ -27,8 +27,6 @@ class Topology(EventMixin):
 
     def _handle_ConnectionUp(self, event):
         netgraph.add_switch("s%d" % event.dpid, event.connection)
-        event.connection.send( of.ofp_flow_mod( action=of.ofp_action_output( port=of.OFPP_CONTROLLER ),
-                                                match=of.ofp_match( dl_type=0x800)))
 
     def _handle_PacketIn(self, event):
         packet = event.parsed
@@ -37,19 +35,21 @@ class Topology(EventMixin):
             arp_packet = packet.next
             src = str(arp_packet.protosrc)
             dst = str(arp_packet.protodst)
+            print arp_packet, "s%d" % event.dpid
 
             if not netgraph.get_host(src):
                 netgraph.add_host(src, "s%d" % event.dpid, event.port)
                 for src_switch, connection in netgraph.get_all_switches():
-                    path = netgraph.find_path(src_switch, src, dscp=0x00)
+                    path = netgraph.find_path(src_switch, src, 0x00)
                     for switch, port in path:
                         switch.send( of.ofp_flow_mod( action=of.ofp_action_output( port=port ),
                                                                  match=of.ofp_match( dl_type=0x0806,
-                                                                                     dl_dst=src)))
+                                                                                     nw_dst=arp_packet.protosrc)))
             if not netgraph.get_host(dst):
                 msg = of.ofp_packet_out()
                 msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
                 msg.data = event.ofp
                 msg.in_port = event.port
+                event.connection.send(msg)
 def launch():
     core.registerNew(Topology)
