@@ -14,7 +14,72 @@ def add_link(src, src_port, dst, dst_port, **params):
     #print network
 
 def find_path(src, dst, dscp):
-    return [(switches['s1'], 1), (switches['s2'], 3)] if dst == '10.0.0.2' else [(switches['s2'], 1), (switches['s1'], 3)]
+    if dscp == 0x00:
+        if src == "s1" or src == "10.0.0.1":
+            if dst == "10.0.0.1":
+                return [(switches['s1'], 3)]
+            elif dst == "10.0.0.2":
+                return [(switches['s1'], 1), (switches['s2'], 3)]
+            elif dst == "10.0.0.3":
+                return [(switches['s1'], 1), (switches['s2'], 2), (switches['s3'], 3)]
+        elif src == "s2" or src == "10.0.0.2":
+            if dst == "10.0.0.1":
+                return [(switches['s2'], 1), (switches['s1'], 3)]
+            elif dst == "10.0.0.2":
+                return [(switches['s2'], 3)]
+            elif dst == "10.0.0.3":
+                return [(switches['s2'], 2), (switches['s3'], 3)]
+        elif src == "s3" or src == "10.0.0.3":
+            if dst == "10.0.0.1":
+                return [(switches['s3'], 2), (switches['s2'], 1), (switches['s1'], 3)]
+            elif dst == "10.0.0.2":
+                return [(switches['s3'], 2), (switches['s2'], 3)]
+            elif dst == "10.0.0.3":
+                return [(switches['s3'], 3)]
+    elif dscp == 0x01:
+        if src == "s1" or src == "10.0.0.1":
+            if dst == "10.0.0.1":
+                return [(switches['s1'], 3)]
+            elif dst == "10.0.0.2":
+                return [(switches['s1'], 2), (switches['s3'], 2), (switches['s2'], 3)]
+            elif dst == "10.0.0.3":
+                return [(switches['s1'], 2), (switches['s3'], 3)]
+        elif src == "s2" or src == "10.0.0.2":
+            if dst == "10.0.0.1":
+                return [(switches['s2'], 2), (switches['s3'], 1), (switches['s1'], 3)]
+            elif dst == "10.0.0.2":
+                return [(switches['s2'], 3)]
+            elif dst == "10.0.0.3":
+                return [(switches['s2'], 2), (switches['s3'], 3)]
+        elif src == "s3" or src == "10.0.0.3":
+            if dst == "10.0.0.1":
+                return [ (switches['s3'], 1), (switches['s1'], 3)]
+            elif dst == "10.0.0.2":
+                return [(switches['s3'], 2), (switches['s2'], 3)]
+            elif dst == "10.0.0.3":
+                return [(switches['s3'], 3)]
+    elif dscp == 0x02:
+        if src == "s1" or src == "10.0.0.1":
+            if dst == "10.0.0.1":
+                return [(switches['s1'], 3)]
+            elif dst == "10.0.0.2":
+                return [(switches['s1'], 1), (switches['s2'], 3)]
+            elif dst == "10.0.0.3":
+                return [(switches['s1'], 1), (switches['s2'], 2), (switches['s3'], 3)]
+        elif src == "s2" or src == "10.0.0.2":
+            if dst == "10.0.0.1":
+                return [(switches['s2'], 1), (switches['s1'], 3)]
+            elif dst == "10.0.0.2":
+                return [(switches['s2'], 3)]
+            elif dst == "10.0.0.3":
+                return [(switches['s2'], 2), (switches['s3'], 3)]
+        elif src == "s3" or src == "10.0.0.3":
+            if dst == "10.0.0.1":
+                return [(switches['s3'], 2), (switches['s2'], 1), (switches['s1'], 3)]
+            elif dst == "10.0.0.2":
+                return [(switches['s3'], 2), (switches['s2'], 3)]
+            elif dst == "10.0.0.3":
+                return [(switches['s3'], 3)]
 
 def add_switch(dpid, connection):
     switches[dpid] = connection
@@ -33,4 +98,4 @@ def get_switch(dpid):
     return switches.get(dpid, False)
 
 def get_all_switches():
-    return switches
+    return switches.iteritems()
