@@ -17,7 +17,7 @@ class Qos(EventMixin):
         packet = event.parsed
         if isinstance(packet.next, ipv4):
             print packet.next
-            path = netgraph.find_path(str(packet.next.srcip), str(packet.next.dstip), packet.next.tos)
+            path = netgraph.find_path(str(packet.next.srcip), str(packet.next.dstip), packet.next.tos >> 2)
             for switch, port in path:
                 switch.send( of.ofp_flow_mod( action=of.ofp_action_output( port=port ),
                                               priority=10000,
