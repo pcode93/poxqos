@@ -14,7 +14,14 @@ class Qos(EventMixin):
         core.call_when_ready(startup, ('openflow'))
 
     def _handle_PacketIn(self, event):
+        """
+        PacketIn event callback.
+        Handles IPv4 packets.
+        Finds paths for IPv4 packets based on DSCP values.
+        """
+
         packet = event.parsed
+
         if isinstance(packet.next, ipv4):
             print packet.next
             path = netgraph.find_path(str(packet.next.srcip), str(packet.next.dstip), packet.next.tos >> 2)

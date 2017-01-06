@@ -13,6 +13,7 @@ default_params = {
     "loss": 0
 }
 
+#Load path parameters for DSCP values
 with open(DSCP_CONFIG) as dscp_config:
     dscps = json.load(dscp_config)
 
@@ -58,6 +59,13 @@ def dijkstra(graph,src,dest,bw_w,delay_w,loss_w,visited=[],predecessors={},bw={}
         return dijkstra(graph,next,dest,bw_w, delay_w, loss_w,visited,predecessors,bw,delay,loss, weight)
 
 def find_path(src, dst, dscp):
+    """
+    Finds a path between src and dst for parameters specified by the dscp value.
+    Path parameters are taken from DSCP_CONFIG.
+
+    Returns a list of (switch connection, switch output port).
+    """
+
     return map(lambda switch: (switches[switch[0]], switch[1]), 
                 filter(lambda node: not re.match('(\d+\\.){3}\d+', node[0]), 
                         dijkstra(network, src, dst, *dscps[str(dscp)].values())))
