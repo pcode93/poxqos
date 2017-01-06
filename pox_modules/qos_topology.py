@@ -21,12 +21,21 @@ class Topology(EventMixin):
     def _handle_LinkEvent(self, event):
         src = "s%d" % event.link.dpid1
         dst = "s%d" % event.link.dpid2
-
         link = [x for x in self.links if (x["src"], x["dst"]) == (src, dst)]
-        len(link) > 0 and netgraph.add_link(src, event.link.port1, dst, event.link.port2, **link[0]["params"])
+
+        if len(link) > 0:
+            if event.added:
+                netgraph.add_link(src, event.link.port1, dst, event.link.port2, **link[0]["params"])
+            elif event.removed:
+                removed = netgraph.remove_link(src, dst)
+                switch = netgraph.get_switch(src)
+                switch and switch.send( of.ofp_flow_mod( command=of.OFPFC_DELETE, out_port=removed.src)
 
     def _handle_ConnectionUp(self, event):
         netgraph.add_switch("s%d" % event.dpid, event.connection)
+
+    def _handle_ConnectionDown(self, event):
+        #netgraph.remove_switch("s%d" % event.dpid)
 
     def _handle_PacketIn(self, event):
         packet = event.parsed
