@@ -30,7 +30,7 @@ class Topology(EventMixin):
         dst = "s%d" % event.link.dpid2
 
         #Find this link in static_link_params.json
-        link = [x for x in self.links if (x["src"], x["dst"]) == (src, dst)]
+        link = [x for x in self.links if (x["src"], x["dst"]) == (src, dst) or (x["src"], x["dst"]) == (dst, src)]
 
         if len(link) > 0:
             if event.added:
@@ -74,7 +74,7 @@ class Topology(EventMixin):
             arp_packet = packet.next
             src = str(arp_packet.protosrc)
             dst = str(arp_packet.protodst)
-            print arp_packet, "s%d" % event.dpid
+            #print arp_packet, "s%d" % event.dpid
 
             #Check if the source host has been registered.
             #If not, register the host and find paths between the host and all switches.
@@ -83,7 +83,7 @@ class Topology(EventMixin):
                 for src_switch, connection in netgraph.get_all_switches():
                     path = netgraph.find_path(src_switch, src, 0x00)
                     for switch, port in path:
-                        switch.send( of.ofp_flow_mod( action=of.ofp_action_output( port=port ),
+                        switch.send( of.ofp_flow_mod( action=[of.ofp_action_output( port=port ), of.ofp_action_output(port=of.OFPP_CONTROLLER)],
                                                                  match=of.ofp_match( dl_type=0x0806,
                                                                                      nw_dst=arp_packet.protosrc)))
             #Check if the destination host has been registered.

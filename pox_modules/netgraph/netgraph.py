@@ -44,7 +44,7 @@ def dijkstra(graph,src,dest,bw_w,delay_w,loss_w,visited=None,predecessors=None,b
             bw[src] = float('inf')
             delay[src] = 0
             loss[src] = 0
-            weight[src] = 0
+            weight[src] = -float('inf')
 
         for neighbor in graph[src].keys() :
             if neighbor not in visited:
@@ -78,7 +78,7 @@ def find_path(src, dst, dscp):
 
     Returns a list of (switch connection, switch output port).
     """
-
+    print src, dst
     return map(lambda switch: (switches[switch[0]], switch[1]), 
                 filter(lambda node: not re.match('(\d+\\.){3}\d+', node[0]), 
                         dijkstra(network, src, dst, *dscps[str(dscp)].values())))
