@@ -40,7 +40,7 @@ class Topology(EventMixin):
                 switch = netgraph.get_switch(src)
 
                 #If there is a connection to the source switch, delete all flow entries for that link 
-                switch and switch.send( of.ofp_flow_mod( command=of.OFPFC_DELETE, out_port=removed.src)
+                switch and switch.send( of.ofp_flow_mod( command=of.OFPFC_DELETE, out_port=removed.src))
 
     def _handle_ConnectionUp(self, event):
         """
@@ -51,6 +51,7 @@ class Topology(EventMixin):
         netgraph.add_switch("s%d" % event.dpid, event.connection)
 
     def _handle_ConnectionDown(self, event):
+        pass
         #netgraph.remove_switch("s%d" % event.dpid)
 
     def _handle_PacketIn(self, event):

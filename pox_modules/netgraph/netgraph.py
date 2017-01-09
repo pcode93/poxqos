@@ -8,8 +8,8 @@ hosts = {}
 network = {}
 dscps = {}
 default_params = {
-    "bw": 10,
-    "delay": 50,
+    "bw": float('inf'),
+    "delay": 0,
     "loss": 0
 }
 
@@ -17,7 +17,20 @@ default_params = {
 with open(DSCP_CONFIG) as dscp_config:
     dscps = json.load(dscp_config)
 
-def dijkstra(graph,src,dest,bw_w,delay_w,loss_w,visited=[],predecessors={},bw={},delay={},loss={}, weight={}):
+def dijkstra(graph,src,dest,bw_w,delay_w,loss_w,visited=None,predecessors=None,bw=None,delay=None,loss=None, weight=None):
+    if visited is None:
+        visited = []
+    if predecessors is None:
+        predecessors = {}
+    if bw is None:
+        bw = {}
+    if delay is None:
+        delay = {}
+    if loss is None:
+        loss = {}
+    if weight is None:
+        weight = {}
+
     if src == dest:
         path = []
         pred = (dest, 0)
@@ -28,16 +41,16 @@ def dijkstra(graph,src,dest,bw_w,delay_w,loss_w,visited=[],predecessors={},bw={}
         return path
     else :     
         if not visited: 
-            bw[src] = 0
+            bw[src] = float('inf')
             delay[src] = 0
             loss[src] = 0
             weight[src] = 0
 
-        for neighbor in graph[src] :
+        for neighbor in graph[src].keys() :
             if neighbor not in visited:
-                new_bw = min(bw[src], graph[src][neighbor]['params']['bw'] )
-                new_loss = loss[src] + graph[src][neighbor]['params']['loss']
-                new_delay = delay[src] + graph[src][neighbor]['params']['delay']
+                new_bw = min(bw.get(src, float('inf')), graph[src][neighbor]['params']['bw'] )
+                new_loss = loss.get(src, 0) + graph[src][neighbor]['params']['loss']
+                new_delay = delay.get(src, 0) + graph[src][neighbor]['params']['delay']
                 new_weight = bw_w * new_bw + delay_w * new_delay + loss_w * new_loss
 
                 if new_weight > weight.get(neighbor,-float('inf')):
@@ -222,7 +235,7 @@ if __name__ == "__main__":
              'params':{  
                 'delay':100,
                 'loss':5,
-                'bw':100
+                'bw':5
              }
           },
           '10.0.0.2': {
@@ -247,7 +260,7 @@ if __name__ == "__main__":
              'params':{  
                 'delay':100,
                 'loss':5,
-                'bw':100
+                'bw':5
              }
           },
           '10.0.0.1': {
