@@ -1,63 +1,79 @@
 import json
 import re
 
-DSCP_CONFIG = 'pox_modules/netgraph/dscp.json' if __name__ == '__main__' else 'ext/netgraph/dscp.json'
+__DSCP_CONFIG = 'pox_modules/netgraph/dscp.json' if __name__ == '__main__' else 'ext/netgraph/dscp.json'
 
-switches = {}
-hosts = {}
-network = {}
-dscps = {}
-default_params = {
+__switches = {}
+__hosts = {}
+__network = {}
+__dscps = {}
+__DEFUALT_PARAMS = {
     "bw": float('inf'),
     "delay": 0,
     "loss": 0
 }
+__WEIGHTS_CONFIG = {
+    "bw": {
+        "init": float('inf'),
+        "next_val": lambda prev, current: min(prev, current)
+    },
+    "delay": {
+        "init": 0,
+        "next_val": lambda prev, current: prev + current
+    },
+    "loss": {
+        "init": 0,
+        "next_val": lambda prev, current: prev + current
+    }
+}
+__DEFUALT_SUM_WEIGHT = -float('inf')
 
 #Load path parameters for DSCP values
-with open(DSCP_CONFIG) as dscp_config:
-    dscps = json.load(dscp_config)
+with open(__DSCP_CONFIG) as __DSCP_CONFIG:
+    __dscps = json.load(__DSCP_CONFIG)
 
-def dijkstra(graph,src,dest,bw_w,delay_w,loss_w,visited=None,predecessors=None,bw=None,delay=None,loss=None, weight=None):
+def __sum_weights(weights, multipliers):
+    return sum([weights[param] * multipliers[param] for param in weights])
+
+def dijkstra(graph, src, dst, weight_multipliers, visited=None, predecessors=None, weights=None):
     if visited is None:
         visited = []
     if predecessors is None:
         predecessors = {}
-    if bw is None:
-        bw = {}
-    if delay is None:
-        delay = {}
-    if loss is None:
-        loss = {}
-    if weight is None:
-        weight = {}
+    if weights is None:
+        weights = {k: {} for k in weight_multipliers}
+        weights["sum"] = {}
 
-    if src == dest:
+    if src == dst:
         path = []
-        pred = (dest, 0)
+        pred = (dst, 0)
+
         while pred != None:
             path.append(pred)
-            pred = predecessors.get(pred[0],None)
+            pred = predecessors.get(pred[0], None)
+
         print path
         return path
     else :     
-        if not visited: 
-            bw[src] = float('inf')
-            delay[src] = 0
-            loss[src] = 0
-            weight[src] = -float('inf')
+        if not visited:
+            for k in weight_multipliers:
+                weights[k][src] = __WEIGHTS_CONFIG[k]["init"]
+            weights["sum"][src] = __DEFUALT_SUM_WEIGHT
 
-        for neighbor in graph[src].keys() :
+        for neighbor in graph[src]:
             if neighbor not in visited:
-                new_bw = min(bw.get(src, float('inf')), graph[src][neighbor]['params']['bw'] )
-                new_loss = loss.get(src, 0) + graph[src][neighbor]['params']['loss']
-                new_delay = delay.get(src, 0) + graph[src][neighbor]['params']['delay']
-                new_weight = bw_w * new_bw + delay_w * new_delay + loss_w * new_loss
+                new_weights = {k: __WEIGHTS_CONFIG[k]["next_val"](
+                                      weights[k].get(src, __WEIGHTS_CONFIG[k]["init"]),
+                                      graph[src][neighbor]['params'][k]
+                                  ) for k in weight_multipliers}
 
-                if new_weight > weight.get(neighbor,-float('inf')):
-                    weight[neighbor] = new_weight
-                    loss[neighbor] = new_loss
-                    delay[neighbor] = new_delay
-                    bw[neighbor] = new_bw
+                new_sum = __sum_weights(new_weights, weight_multipliers)
+
+                if new_sum > weights["sum"].get(neighbor, __DEFUALT_SUM_WEIGHT):
+                    for k in weight_multipliers:
+                        weights[k][neighbor] = new_weights[k]
+                    weights["sum"][neighbor] = new_sum
+
                     predecessors[neighbor] = (src, graph[src][neighbor]['src'])
 
         visited.append(src)
@@ -65,135 +81,68 @@ def dijkstra(graph,src,dest,bw_w,delay_w,loss_w,visited=None,predecessors=None,b
         unvisited = {}
         for k in graph:
             if k not in visited:
-                unvisited[k] = weight.get(k,-float('inf'))    
+                unvisited[k] = weights["sum"].get(k, __DEFUALT_SUM_WEIGHT)    
   
         next = max(unvisited, key=unvisited.get)
 
-        return dijkstra(graph,next,dest,bw_w, delay_w, loss_w,visited,predecessors,bw,delay,loss, weight)
+        return dijkstra(graph, next, dst, weight_multipliers, visited, predecessors, weights)
 
 def find_path(src, dst, dscp):
     """
     Finds a path between src and dst for parameters specified by the dscp value.
-    Path parameters are taken from DSCP_CONFIG.
+    Path parameters are taken from __DSCP_CONFIG.
 
     Returns a list of (switch connection, switch output port).
     """
     print src, dst
-    return map(lambda switch: (switches[switch[0]], switch[1]), 
-                filter(lambda node: not re.match('(\d+\\.){3}\d+', node[0]), 
-                        dijkstra(network, src, dst, *dscps[str(dscp)].values())))
-
-def find_path_temp(src, dst, dscp):
-    if dscp == 0x00:
-        if src == "s1" or src == "10.0.0.1":
-            if dst == "10.0.0.1":
-                return [(switches['s1'], 3)]
-            elif dst == "10.0.0.2":
-                return [(switches['s1'], 1), (switches['s2'], 3)]
-            elif dst == "10.0.0.3":
-                return [(switches['s1'], 1), (switches['s2'], 2), (switches['s3'], 3)]
-        elif src == "s2" or src == "10.0.0.2":
-            if dst == "10.0.0.1":
-                return [(switches['s2'], 1), (switches['s1'], 3)]
-            elif dst == "10.0.0.2":
-                return [(switches['s2'], 3)]
-            elif dst == "10.0.0.3":
-                return [(switches['s2'], 2), (switches['s3'], 3)]
-        elif src == "s3" or src == "10.0.0.3":
-            if dst == "10.0.0.1":
-                return [(switches['s3'], 2), (switches['s2'], 1), (switches['s1'], 3)]
-            elif dst == "10.0.0.2":
-                return [(switches['s3'], 2), (switches['s2'], 3)]
-            elif dst == "10.0.0.3":
-                return [(switches['s3'], 3)]
-    elif dscp == 0x01:
-        if src == "s1" or src == "10.0.0.1":
-            if dst == "10.0.0.1":
-                return [(switches['s1'], 3)]
-            elif dst == "10.0.0.2":
-                return [(switches['s1'], 2), (switches['s3'], 2), (switches['s2'], 3)]
-            elif dst == "10.0.0.3":
-                return [(switches['s1'], 2), (switches['s3'], 3)]
-        elif src == "s2" or src == "10.0.0.2":
-            if dst == "10.0.0.1":
-                return [(switches['s2'], 2), (switches['s3'], 1), (switches['s1'], 3)]
-            elif dst == "10.0.0.2":
-                return [(switches['s2'], 3)]
-            elif dst == "10.0.0.3":
-                return [(switches['s2'], 2), (switches['s3'], 3)]
-        elif src == "s3" or src == "10.0.0.3":
-            if dst == "10.0.0.1":
-                return [ (switches['s3'], 1), (switches['s1'], 3)]
-            elif dst == "10.0.0.2":
-                return [(switches['s3'], 2), (switches['s2'], 3)]
-            elif dst == "10.0.0.3":
-                return [(switches['s3'], 3)]
-    elif dscp == 0x02:
-        if src == "s1" or src == "10.0.0.1":
-            if dst == "10.0.0.1":
-                return [(switches['s1'], 3)]
-            elif dst == "10.0.0.2":
-                return [(switches['s1'], 1), (switches['s2'], 3)]
-            elif dst == "10.0.0.3":
-                return [(switches['s1'], 1), (switches['s2'], 2), (switches['s3'], 3)]
-        elif src == "s2" or src == "10.0.0.2":
-            if dst == "10.0.0.1":
-                return [(switches['s2'], 1), (switches['s1'], 3)]
-            elif dst == "10.0.0.2":
-                return [(switches['s2'], 3)]
-            elif dst == "10.0.0.3":
-                return [(switches['s2'], 2), (switches['s3'], 3)]
-        elif src == "s3" or src == "10.0.0.3":
-            if dst == "10.0.0.1":
-                return [(switches['s3'], 2), (switches['s2'], 1), (switches['s1'], 3)]
-            elif dst == "10.0.0.2":
-                return [(switches['s3'], 2), (switches['s2'], 3)]
-            elif dst == "10.0.0.3":
-                return [(switches['s3'], 3)]
+    return [(__switches[switch[0]], switch[1]) 
+                for switch 
+                in dijkstra(__network, src, dst, __dscps[str(dscp)]) 
+                if not re.match('(\d+\\.){3}\d+', switch[0])]
 
 def add_switch(dpid, connection):
-    switches[dpid] = connection
-    network[dpid] = {}
+    __switches[dpid] = connection
+    __network[dpid] = {}
 
 def add_host(ip, switch_dpid, switch_port):
-    hosts[ip] = {"switch": switch_dpid, "port": switch_port}
-    network[ip] = {}
-    network[ip][switch_dpid] = {"src": 0, "dst": switch_port, "params": default_params}
-    network[switch_dpid][ip] = {"src": switch_port, "dst": 0, "params": default_params}
+    __hosts[ip] = {"switch": switch_dpid, "port": switch_port}
+    __network[ip] = {}
+    __network[ip][switch_dpid] = {"src": 0, "dst": switch_port, "params": __DEFUALT_PARAMS}
+    __network[switch_dpid][ip] = {"src": switch_port, "dst": 0, "params": __DEFUALT_PARAMS}
 
 def add_link(src, src_port, dst, dst_port, **params):
     params = {k: v if k != 'delay' else int(re.search('\d+', v).group(0)) for k,v in params.iteritems()}
-    network[src][dst] = {"src": src_port, "dst": dst_port, "params": params}
-    #print network
+    __network[src][dst] = {"src": src_port, "dst": dst_port, "params": params}
 
 def remove_link(src, dst):
-    if src in network and dst in network[src]:
-        return network[src].pop(dst)
+    if src in __network and dst in __network[src]:
+        return __network[src].pop(dst)
 
 def remove_switch(dpid):
-    del switches[dpid]
-    del network[dpid]
-    for k in network.keys():
+    del __switches[dpid]
+    del __network[dpid]
+    for k in __network.keys():
         remove_link(k, dpid)
 
 def get_host(ip):
-    return hosts.get(ip, None)
+    return __hosts.get(ip, None)
 
 def get_switch(dpid):
-    return switches.get(dpid, None)
+    return __switches.get(dpid, None)
 
-def get_all_switches():
-    return switches.iteritems()
+def get_all___switches():
+    return __switches.iteritems()
 
 def get_links(src):
-    return network.get(src, None)
+    return __network.get(src, None)
 
 def get_link(src, dst):
     links = get_links(src)
     return links and links.get(dst, None)
 
+#TEST
 if __name__ == "__main__":
-    network = {  
+    __network = {  
        's3':{  
           's2':{  
              'src':2,
@@ -216,7 +165,7 @@ if __name__ == "__main__":
           '10.0.0.3': {
              'src': 3,
              'dst': 0,
-             'params': default_params
+             'params': __DEFUALT_PARAMS
           }
        },
        's2':{  
@@ -241,7 +190,7 @@ if __name__ == "__main__":
           '10.0.0.2': {
              'src': 3,
              'dst': 0,
-             'params': default_params
+             'params': __DEFUALT_PARAMS
           }
        },
        's1':{  
@@ -266,32 +215,32 @@ if __name__ == "__main__":
           '10.0.0.1': {
              'src': 3,
              'dst': 0,
-             'params': default_params
+             'params': __DEFUALT_PARAMS
           }
        },
        '10.0.0.1': {
             's1': {
                 'src': 0,
                 'dst': 3,
-                'params': default_params
+                'params': __DEFUALT_PARAMS
             }
        },
        '10.0.0.2': {
             's2': {
                 'src': 0,
                 'dst': 3,
-                'params': default_params
+                'params': __DEFUALT_PARAMS
             }
        },
        '10.0.0.3': {
             's3': {
                 'src': 0,
                 'dst': 3,
-                'params': default_params
+                'params': __DEFUALT_PARAMS
             }
        }
     }
-    switches = {
+    __switches = {
         's1': 'Switch 1 connection',
         's2': 'Switch 2 connection',
         's3': 'Switch 3 connection'

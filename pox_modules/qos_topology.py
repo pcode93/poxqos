@@ -17,7 +17,7 @@ class Topology(EventMixin):
             with open('ext/static_link_params.json') as config:
                 self.links = json.load(config)["links"]
 
-        core.call_when_ready(startup, ('openflow','openflow_discovery'))
+        core.call_when_ready(startup, ('openflow', 'openflow_discovery'))
 
     def _handle_LinkEvent(self, event):
         """
@@ -40,7 +40,7 @@ class Topology(EventMixin):
                 switch = netgraph.get_switch(src)
 
                 #If there is a connection to the source switch, delete all flow entries for that link 
-                switch and switch.send( of.ofp_flow_mod( command=of.OFPFC_DELETE, out_port=removed.src))
+                switch and switch.send(of.ofp_flow_mod(command=of.OFPFC_DELETE, out_port=removed.src))
 
     def _handle_ConnectionUp(self, event):
         """
@@ -83,9 +83,14 @@ class Topology(EventMixin):
                 for src_switch, connection in netgraph.get_all_switches():
                     path = netgraph.find_path(src_switch, src, 0x00)
                     for switch, port in path:
-                        switch.send( of.ofp_flow_mod( action=[of.ofp_action_output( port=port ), of.ofp_action_output(port=of.OFPP_CONTROLLER)],
-                                                                 match=of.ofp_match( dl_type=0x0806,
-                                                                                     nw_dst=arp_packet.protosrc)))
+                        switch.send(of.ofp_flow_mod(command=of.OFPFC_DELETE,
+                                                    match=match=of.ofp_match(dl_type=0x0806,
+                                                                             nw_dst=arp_packet.protosrc))
+
+                        switch.send( of.ofp_flow_mod(action=[of.ofp_action_output(port=port),
+                                                             of.ofp_action_output(port=of.OFPP_CONTROLLER)],
+                                                     match=of.ofp_match(dl_type=0x0806,
+                                                                        nw_dst=arp_packet.protosrc)))
             #Check if the destination host has been registered.
             #If not, send the packet out on all ports
             if not netgraph.get_host(dst):

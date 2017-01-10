@@ -26,12 +26,18 @@ class Qos(EventMixin):
             print packet.next
             path = netgraph.find_path(str(packet.next.srcip), str(packet.next.dstip), packet.next.tos >> 2)
             for switch, port in path:
-                switch.send( of.ofp_flow_mod( action=of.ofp_action_output( port=port ),
-                                              priority=10000,
-                                              match=of.ofp_match( dl_type=0x0800,
-                                                                  nw_src=packet.next.srcip,
-                                                                  nw_dst=packet.next.dstip,
-                                                                  nw_tos=packet.next.tos)))
+                switch.send(of.ofp_flow_mod(command=of.OFPFC_DELETE,
+                                            match=of.ofp_match(dl_type=0x0800,
+                                                               nw_src=packet.next.srcip,
+                                                               nw_dst=packet.next.dstip,
+                                                               nw_tos=packet.next.tos)))
+
+                switch.send(of.ofp_flow_mod(action=of.ofp_action_output(port=port),
+                                            priority=10000,
+                                            match=of.ofp_match(dl_type=0x0800,
+                                                               nw_src=packet.next.srcip,
+                                                               nw_dst=packet.next.dstip,
+                                                               nw_tos=packet.next.tos)))
 
 def launch():
     core.registerNew(Qos)
