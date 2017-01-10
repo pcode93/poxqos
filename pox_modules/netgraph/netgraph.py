@@ -130,7 +130,7 @@ def get_host(ip):
 def get_switch(dpid):
     return __switches.get(dpid, None)
 
-def get_all___switches():
+def get_all_switches():
     return __switches.iteritems()
 
 def get_links(src):

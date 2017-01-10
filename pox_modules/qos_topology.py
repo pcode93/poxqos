@@ -84,11 +84,11 @@ class Topology(EventMixin):
                     path = netgraph.find_path(src_switch, src, 0x00)
                     for switch, port in path:
                         switch.send(of.ofp_flow_mod(command=of.OFPFC_DELETE,
-                                                    match=match=of.ofp_match(dl_type=0x0806,
-                                                                             nw_dst=arp_packet.protosrc))
+                                                    match=of.ofp_match(dl_type=0x0806,
+                                                                       nw_dst=arp_packet.protosrc)))
 
-                        switch.send( of.ofp_flow_mod(action=[of.ofp_action_output(port=port),
-                                                             of.ofp_action_output(port=of.OFPP_CONTROLLER)],
+                        switch.send(of.ofp_flow_mod(action=[of.ofp_action_output(port=port),
+                                                            of.ofp_action_output(port=of.OFPP_CONTROLLER)],
                                                      match=of.ofp_match(dl_type=0x0806,
                                                                         nw_dst=arp_packet.protosrc)))
             #Check if the destination host has been registered.
