@@ -1,11 +1,15 @@
 import json
 
+from time import sleep
+
 from mininet.topo import Topo
 from mininet.net import Mininet
 from mininet.link import TCLink
 from mininet.log import setLogLevel
 from mininet.node import RemoteController
 from mininet.cli import CLI
+
+LOG_FILE = '/tmp/test.out'
 
 class QosTopo(Topo):
     def build(self, config):
@@ -16,14 +20,35 @@ class QosTopo(Topo):
         for link in config["links"]:
             self.addLink(link["src"], link["dst"], **link["params"])
 
+def print_log():
+    f = open(LOG_FILE)
+    for line in f.readlines():
+        print "%s" % line.strip()
+    f.close()
+
+def ping(mn, src, dst):
+    print 'Ping from %s to %s' % (src, dst)
+
+    mn.get(src).cmd('ping %s > %s &' % (mn.get(dst).IP(), LOG_FILE))
+    sleep(5)
+    mn.get(src).cmd('kill %ping')
+
+    print_log()
+
+    print 'Done'
+
 def start():
     #The topology is loaded from static_link_params.json
     with open('static_link_params.json') as config:
-        mn = Mininet(topo=QosTopo(json.load(config)), link=TCLink, controller=lambda name: RemoteController( name, ip='127.0.0.1' , port=8000))
+        print 'Starting mininet'
+        mn = Mininet(topo=QosTopo(json.load(config)),
+                     link=TCLink,
+                     controller=lambda name: RemoteController(name, ip='127.0.0.1', port=8000))
         mn.start()
-        CLI(mn)
-        mn.stop()
+        sleep(10)
+        return mn
 
 if __name__ == '__main__':
-    setLogLevel('debug')
-    start()
+    mn = start()
+    CLI(mn)
+    mn.stop()

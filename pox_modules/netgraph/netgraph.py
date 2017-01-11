@@ -35,6 +35,9 @@ with open(__DSCP_CONFIG) as __DSCP_CONFIG:
 def __sum_weights(weights, multipliers):
     return sum([weights[param] * multipliers[param] for param in weights])
 
+def __normalize(params):
+    return params
+
 def dijkstra(graph, src, dst, weight_multipliers, visited=None, predecessors=None, weights=None):
     if visited is None:
         visited = []
@@ -52,7 +55,7 @@ def dijkstra(graph, src, dst, weight_multipliers, visited=None, predecessors=Non
             path.append(pred)
             pred = predecessors.get(pred[0], None)
 
-        print path
+        print 'Found path: ', path
         return path
     else :     
         if not visited:
@@ -94,7 +97,7 @@ def find_path(src, dst, dscp):
 
     Returns a list of (switch connection, switch output port).
     """
-    print src, dst
+    print 'Finding path between %s and %s for dscp = %d' % (src, dst, dscp)
     return [(__switches[switch[0]], switch[1]) 
                 for switch 
                 in dijkstra(__network, src, dst, __dscps[str(dscp)]) 
@@ -107,12 +110,12 @@ def add_switch(dpid, connection):
 def add_host(ip, switch_dpid, switch_port):
     __hosts[ip] = {"switch": switch_dpid, "port": switch_port}
     __network[ip] = {}
-    __network[ip][switch_dpid] = {"src": 0, "dst": switch_port, "params": __DEFUALT_PARAMS}
-    __network[switch_dpid][ip] = {"src": switch_port, "dst": 0, "params": __DEFUALT_PARAMS}
+    __network[ip][switch_dpid] = {"src": 0, "dst": switch_port, "params": __normalize(__DEFUALT_PARAMS)}
+    __network[switch_dpid][ip] = {"src": switch_port, "dst": 0, "params": __normalize(__DEFUALT_PARAMS)}
 
 def add_link(src, src_port, dst, dst_port, **params):
     params = {k: v if k != 'delay' else int(re.search('\d+', v).group(0)) for k,v in params.iteritems()}
-    __network[src][dst] = {"src": src_port, "dst": dst_port, "params": params}
+    __network[src][dst] = {"src": src_port, "dst": dst_port, "params": __normalize(params)}
 
 def remove_link(src, dst):
     if src in __network and dst in __network[src]:
