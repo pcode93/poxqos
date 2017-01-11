@@ -1,5 +1,3 @@
-from time import sleep
-
 from topo import start
 from topo import iperf
 
