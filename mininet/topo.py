@@ -37,6 +37,21 @@ def ping(mn, src, dst):
 
     print 'Done'
 
+def iperf(mn, src, dst, dscp):
+    print 'Generating traffic for dscp = 0x%02x' % dscp
+
+    mn.get(dst).cmd('iperf -p 10000 -s &')
+    sleep(2)
+    mn.get(src).cmd('iperf -p 10000 -c %s -S 0x%02x > %s &' % (mn.get(dst).IP(), dscp << 2, LOG_FILE))
+    sleep(5)
+    mn.get(src).cmd('kill %iperf')
+    sleep(1)
+    mn.get(dst).cmd('kill %iperf')
+    sleep(1)
+    print_log()
+
+    print 'Done'
+
 def start():
     #The topology is loaded from static_link_params.json
     with open('static_link_params.json') as config:

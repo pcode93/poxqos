@@ -56,6 +56,7 @@ def dijkstra(graph, src, dst, weight_multipliers, visited=None, predecessors=Non
             pred = predecessors.get(pred[0], None)
 
         print 'Found path: ', path
+        print ''
         return path
     else :     
         if not visited:
