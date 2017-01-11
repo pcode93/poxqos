@@ -40,7 +40,7 @@ class Topology(EventMixin):
                 switch = netgraph.get_switch(src)
 
                 #If there is a connection to the source switch, delete all flow entries for that link 
-                switch and switch.send(of.ofp_flow_mod(command=of.OFPFC_DELETE, out_port=removed.src))
+                switch and switch.send(of.ofp_flow_mod(command=of.OFPFC_DELETE, out_port=removed["src"]))
 
     def _handle_ConnectionUp(self, event):
         """
