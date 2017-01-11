@@ -1,28 +1,44 @@
 import json
 import re
 
+from functools import partial
+
 __DSCP_CONFIG = 'pox_modules/netgraph/dscp.json' if __name__ == '__main__' else 'ext/netgraph/dscp.json'
 
 __switches = {}
 __hosts = {}
 __network = {}
 __dscps = {}
+
 __DEFUALT_PARAMS = {
     "bw": float('inf'),
     "delay": 0,
     "loss": 0
 }
+
+__DEFAULT_NORMALIZE = lambda min, max, val: 1 if val > max else (val - min) / (max - min)
+__DEFAULT_NORMALIZE_INVERSE = lambda min, max, val: 0 if val > max else (max - val) / (max - min)
+
 __WEIGHTS_CONFIG = {
     "bw": {
         "init": float('inf'),
+        "max": 1000,
+        "min": 0,
+        "normalize": partial(__DEFAULT_NORMALIZE, 0, 1000),
         "next_val": lambda prev, current: min(prev, current)
     },
     "delay": {
         "init": 0,
+        "max": 300,
+        "min": 0,
+        "normalize": partial(__DEFAULT_NORMALIZE_INVERSE, 0, 300),
         "next_val": lambda prev, current: prev + current
     },
     "loss": {
         "init": 0,
+        "max": 30,
+        "min": 0,
+        "normalize": partial(__DEFAULT_NORMALIZE_INVERSE, 0, 30),
         "next_val": lambda prev, current: prev + current
     }
 }
@@ -36,7 +52,7 @@ def __sum_weights(weights, multipliers):
     return sum([weights[param] * multipliers[param] for param in weights])
 
 def __normalize(params):
-    return params
+    return {k: __WEIGHTS_CONFIG[k]["normalize"](v) for k, v in params.iteritems()}
 
 def dijkstra(graph, src, dst, weight_multipliers, visited=None, predecessors=None, weights=None):
     if visited is None:
