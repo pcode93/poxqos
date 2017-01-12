@@ -6,8 +6,8 @@
             "src": "s1",
             "dst": "s2",
             "params": {
-                "bw": 100,
-                "delay": "10ms",
+                "bw": 800,
+                "delay": "120ms",
                 "loss": 5
             }
         },
@@ -15,8 +15,8 @@
             "src": "s1",
             "dst": "s3",
             "params": {
-                "bw": 10,
-                "delay": "10ms",
+                "bw": 300,
+                "delay": "30ms",
                 "loss": 0
             }
         },
@@ -33,9 +33,9 @@
             "src": "s2",
             "dst": "s3",
             "params": {
-                "bw": 50,
-                "delay": "15ms",
-                "loss": 3
+                "bw": 400,
+                "delay": "20ms",
+                "loss": 1
             }
         },
         {

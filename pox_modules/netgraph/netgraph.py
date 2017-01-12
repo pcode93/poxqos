@@ -1,3 +1,5 @@
+from __future__ import division
+
 import json
 import re
 
@@ -16,26 +18,26 @@ __DEFUALT_PARAMS = {
     "loss": 0
 }
 
-__DEFAULT_NORMALIZE = lambda min, max, val: 1 if val > max else (val - min) / (max - min)
-__DEFAULT_NORMALIZE_INVERSE = lambda min, max, val: 0 if val > max else (max - val) / (max - min)
+__NORMALIZE_MAX = 1
+__NORMALIZE_MIN = 0
+
+__DEFAULT_NORMALIZE = lambda min, max, val: __NORMALIZE_MAX if val > max else (val - min) / (max - min)
+__DEFAULT_NORMALIZE_INVERSE = lambda min, max, val: __NORMALIZE_MIN if val > max else (max - val) / (max - min)
 
 __WEIGHTS_CONFIG = {
     "bw": {
-        "init": float('inf'),
         "max": 1000,
         "min": 0,
         "normalize": partial(__DEFAULT_NORMALIZE, 0, 1000),
         "next_val": lambda prev, current: min(prev, current)
     },
     "delay": {
-        "init": 0,
         "max": 300,
         "min": 0,
         "normalize": partial(__DEFAULT_NORMALIZE_INVERSE, 0, 300),
         "next_val": lambda prev, current: prev + current
     },
     "loss": {
-        "init": 0,
         "max": 30,
         "min": 0,
         "normalize": partial(__DEFAULT_NORMALIZE_INVERSE, 0, 30),
@@ -77,13 +79,13 @@ def dijkstra(graph, src, dst, weight_multipliers, visited=None, predecessors=Non
     else :     
         if not visited:
             for k in weight_multipliers:
-                weights[k][src] = __WEIGHTS_CONFIG[k]["init"]
+                weights[k][src] = __NORMALIZE_MAX
             weights["sum"][src] = __DEFUALT_SUM_WEIGHT
 
         for neighbor in graph[src]:
             if neighbor not in visited:
                 new_weights = {k: __WEIGHTS_CONFIG[k]["next_val"](
-                                      weights[k].get(src, __WEIGHTS_CONFIG[k]["init"]),
+                                      weights[k].get(src, __NORMALIZE_MAX),
                                       graph[src][neighbor]['params'][k]
                                   ) for k in weight_multipliers}
 
@@ -101,7 +103,7 @@ def dijkstra(graph, src, dst, weight_multipliers, visited=None, predecessors=Non
         unvisited = {}
         for k in graph:
             if k not in visited:
-                unvisited[k] = weights["sum"].get(k, __DEFUALT_SUM_WEIGHT)    
+                unvisited[k] = weights["sum"].get(k, __DEFUALT_SUM_WEIGHT)
   
         next = max(unvisited, key=unvisited.get)
 
@@ -114,6 +116,7 @@ def find_path(src, dst, dscp):
 
     Returns a list of (switch connection, switch output port).
     """
+
     print 'Finding path between %s and %s for dscp = %d' % (src, dst, dscp)
     return [(__switches[switch[0]], switch[1]) 
                 for switch 
