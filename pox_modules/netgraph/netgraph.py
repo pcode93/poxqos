@@ -5,12 +5,26 @@ import re
 
 from functools import partial
 
+from pox.lib.addresses import IPAddr
+
 __DSCP_CONFIG = 'pox_modules/netgraph/dscp.json' if __name__ == '__main__' else 'ext/netgraph/dscp.json'
 
 __switches = {}
 __hosts = {}
+
 __network = {}
+"""
+A dictionary holding information about links in the network.
+"""
+
 __dscps = {}
+__known_paths = {}
+
+__obs = []
+"""
+List of observers that need to be notified 
+whenever there is a new path added.
+"""
 
 __DEFUALT_PARAMS = {
     "bw": float('inf'),
@@ -44,6 +58,13 @@ __WEIGHTS_CONFIG = {
         "next_val": lambda prev, current: prev + current
     }
 }
+"""
+An object holding configuration for all parameters.
+Every parameter must have a maximum and minimum value
+as well as a normalizing function and a function
+which calculates the next step in the shortest path algorithm.
+"""
+
 __DEFUALT_SUM_WEIGHT = -float('inf')
 
 #Load path parameters for DSCP values
@@ -54,9 +75,20 @@ def __sum_weights(weights, multipliers):
     return sum([weights[param] * multipliers[param] for param in weights])
 
 def __normalize(params):
+    """
+    Applies a normalizing function to every parameter.
+    Every parameter has its own normalizing function.
+    Returns a new dictionary with normalized parameters.
+    """
+
     return {k: __WEIGHTS_CONFIG[k]["normalize"](v) for k, v in params.iteritems()}
 
-def dijkstra(graph, src, dst, weight_multipliers, visited=None, predecessors=None, weights=None):
+def __dijkstra(graph, src, dst, weight_multipliers, visited=None, predecessors=None, weights=None):
+    """
+    Shortest path algorithm where links have multiple weights.
+    Weights to include are specified by @weight_multipliers.
+    """
+
     if visited is None:
         visited = []
     if predecessors is None:
@@ -107,21 +139,55 @@ def dijkstra(graph, src, dst, weight_multipliers, visited=None, predecessors=Non
   
         next = max(unvisited, key=unvisited.get)
 
-        return dijkstra(graph, next, dst, weight_multipliers, visited, predecessors, weights)
+        return __dijkstra(graph, next, dst, weight_multipliers, visited, predecessors, weights)
 
-def find_path(src, dst, dscp):
+def __find_path(src, dst, dscp):
     """
     Finds a path between src and dst for parameters specified by the dscp value.
-    Path parameters are taken from __DSCP_CONFIG.
+    Path parameters are taken from the dscp config file.
 
     Returns a list of (switch connection, switch output port).
     """
 
-    print 'Finding path between %s and %s for dscp = %d' % (src, dst, dscp)
+    print 'Finding path between %s and %s for dscp = %s' % (src, dst, dscp)
+
     return [(__switches[switch[0]], switch[1]) 
                 for switch 
-                in dijkstra(__network, src, dst, __dscps[str(dscp)]) 
+                in __dijkstra(__network, src, dst, __dscps[str(dscp)]) 
                 if not re.match('(\d+\\.){3}\d+', switch[0])]
+
+def __recalculate_paths():
+    """
+    Calculates paths between all hosts for all dscp values.
+    If a new path is found, it is remember and all observers get notified. 
+    """
+
+    for src in __hosts:
+        for dst in __hosts:
+            for dscp in __dscps:
+                if src != dst:
+                    path = __find_path(src, dst, dscp)
+                    if path != __known_paths.get((src, dst, dscp), None):
+                        __known_paths[(src, dst, dscp)] = path
+                        for o in __obs:
+                            o({
+                                "src": IPAddr(src),
+                                "dst": IPAddr(dst),
+                                "path": path,
+                                "dscp": int(dscp)
+                            })
+
+def add_link(src, src_port, dst, dst_port, **params):
+    """
+    Adds a new link and recalculates all paths.
+    """
+
+    print 'Added link between %s and %s with params: %s' % (src, dst, params)
+
+    params = {k: v if k != 'delay' else int(re.search('\d+', str(v)).group(0)) for k,v in params.iteritems()}
+    __network[src][dst] = {"src": src_port, "dst": dst_port, "params": __normalize(params)}
+
+    __recalculate_paths()
 
 def add_switch(dpid, connection):
     __switches[dpid] = connection
@@ -130,20 +196,26 @@ def add_switch(dpid, connection):
 def add_host(ip, switch_dpid, switch_port):
     __hosts[ip] = {"switch": switch_dpid, "port": switch_port}
     __network[ip] = {}
-    __network[ip][switch_dpid] = {"src": 0, "dst": switch_port, "params": __normalize(__DEFUALT_PARAMS)}
-    __network[switch_dpid][ip] = {"src": switch_port, "dst": 0, "params": __normalize(__DEFUALT_PARAMS)}
 
-def add_link(src, src_port, dst, dst_port, **params):
-    params = {k: v if k != 'delay' else int(re.search('\d+', v).group(0)) for k,v in params.iteritems()}
-    __network[src][dst] = {"src": src_port, "dst": dst_port, "params": __normalize(params)}
+    add_link(ip, 0, switch_dpid, switch_port, **__DEFUALT_PARAMS)
+    add_link(switch_dpid, switch_port, ip, 0, **__DEFUALT_PARAMS)
 
 def remove_link(src, dst):
+    """
+    Removes a link and recalculates all paths.
+    """
+    
+    print 'Removed link between %s and %s' % (src, dst)
+
     if src in __network and dst in __network[src]:
-        return __network[src].pop(dst)
+        link = __network[src].pop(dst)
+        __recalculate_paths()
+        return link
 
 def remove_switch(dpid):
     del __switches[dpid]
     del __network[dpid]
+
     for k in __network.keys():
         remove_link(k, dpid)
 
@@ -162,6 +234,12 @@ def get_links(src):
 def get_link(src, dst):
     links = get_links(src)
     return links and links.get(dst, None)
+
+def observe(cb):
+    """
+    Adds a new callback to the list of observers.
+    """
+    __obs.append(cb)
 
 #TEST
 if __name__ == "__main__":
