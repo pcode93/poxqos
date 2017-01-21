@@ -53,9 +53,9 @@ _WEIGHTS_CONFIG = {
     },
     "loss": {
         "best": 0,
-        "worst": 30,
-        "normalize": partial(_DEFAULT_NORMALIZE_INVERSE, 0, 30),
-        "next_val": lambda prev, current: prev + current
+        "worst": 100,
+        "normalize": partial(_DEFAULT_NORMALIZE_INVERSE, 0, 100),
+        "next_val": lambda prev, current: prev + (100 - prev) * current / 100
     }
 }
 """
