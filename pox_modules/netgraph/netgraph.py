@@ -1,4 +1,4 @@
-from _future_ import division
+from __future__ import division
 
 import json
 import re
