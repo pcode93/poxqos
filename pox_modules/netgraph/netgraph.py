@@ -40,20 +40,20 @@ _DEFAULT_NORMALIZE_INVERSE = lambda min, max, val: _NORMALIZE_MIN if val > max e
 
 _WEIGHTS_CONFIG = {
     "bw": {
-        "max": 1000,
-        "min": 0,
+        "best": 1000,
+        "worst": 0,
         "normalize": partial(_DEFAULT_NORMALIZE, 0, 1000),
         "next_val": lambda prev, current: min(prev, current)
     },
     "delay": {
-        "max": 300,
-        "min": 0,
+        "best": 0,
+        "worst": 300,
         "normalize": partial(_DEFAULT_NORMALIZE_INVERSE, 0, 300),
         "next_val": lambda prev, current: prev + current
     },
     "loss": {
-        "max": 30,
-        "min": 0,
+        "best": 0,
+        "worst": 30,
         "normalize": partial(_DEFAULT_NORMALIZE_INVERSE, 0, 30),
         "next_val": lambda prev, current: prev + current
     }
@@ -111,17 +111,16 @@ def _dijkstra(graph, src, dst, weight_multipliers, visited=None, predecessors=No
     else :     
         if not visited:
             for k in weight_multipliers:
-                weights[k][src] = _NORMALIZE_MAX
-            weights["sum"][src] = _DEFUALT_SUM_WEIGHT
+                weights[k][src] = _WEIGHTS_CONFIG[k]["best"]
 
         for neighbor in graph[src]:
             if neighbor not in visited:
                 new_weights = {k: _WEIGHTS_CONFIG[k]["next_val"](
-                                      weights[k].get(src, _NORMALIZE_MAX),
+                                      weights[k].get(src, _WEIGHTS_CONFIG[k]["best"]),
                                       graph[src][neighbor]['params'][k]
                                   ) for k in weight_multipliers}
 
-                new_sum = _sum_weights(new_weights, weight_multipliers)
+                new_sum = _sum_weights(_normalize(new_weights), weight_multipliers)
 
                 if new_sum > weights["sum"].get(neighbor, _DEFUALT_SUM_WEIGHT):
                     for k in weight_multipliers:
@@ -185,7 +184,7 @@ def add_link(src, src_port, dst, dst_port, **params):
     print 'Added link between %s and %s with params: %s' % (src, dst, params)
 
     params = {k: v if k != 'delay' else int(re.search('\d+', str(v)).group(0)) for k,v in params.iteritems()}
-    _network[src][dst] = {"src": src_port, "dst": dst_port, "params": _normalize(params)}
+    _network[src][dst] = {"src": src_port, "dst": dst_port, "params": params}
 
     _recalculate_paths()
 
